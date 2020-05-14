@@ -1,0 +1,83 @@
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# [START istio_proxy_telemetry_operations_suite_wi_app]
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: demo
+  labels:
+    istio-injection: enabled
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: app
+  namespace: demo
+  annotations:
+    iam.gke.io/gcp-service-account: istio-proxy-telemetry-app@$GOOGLE_CLOUD_PROJECT.iam.gserviceaccount.com
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app
+  namespace: demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sampleapp
+  template:
+    metadata:
+      labels:
+        app: sampleapp
+    spec:
+      containers:
+      - image: gcr.io/google-containers/echoserver:1.10@sha256:cb5c1bddd1b5665e1867a7fa1b5fa843a47ee433bbb75d4293888b71def53229
+        name: echo
+        ports:
+        - containerPort: 8080
+      serviceAccountName: app
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: app
+  namespace: demo
+spec:
+  type: ClusterIP
+  selector:
+    app: sampleapp
+  ports:
+  - name: http-app
+    port: 80
+    protocol: TCP
+    targetPort: 8080
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: app
+  namespace: demo
+spec:
+  hosts:
+  - '*'
+  gateways:
+  - istio-system/ingressgateway
+  http:
+  - name: route-app
+    route:
+    - destination:
+        host: app
+# [END istio_proxy_telemetry_operations_suite_wi_app]
